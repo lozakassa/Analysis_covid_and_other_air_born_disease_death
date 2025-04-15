@@ -29,14 +29,14 @@ This project explores death rates due to **COVID-19**, **influenza**, and **pneu
 - 📉 Correlation matrix between diseases
 - 🗺️ State-by-state breakdowns and visualizations
 - 🔮 Analysis of death numbers(2020–2024) Through a negative binomial regression with interaction
+- 🗺️ Utilized an interactive map to visualize the temporal and spatial impact of various diseases across U.S. states.
 
 ---
 
 ## 🗂 Project Files
 
 - `Covid_Year.Rmd` – Main analysis file
-- `/data/` – (Optional) Contains raw or cleaned datasets
-- `/plots/` – Output charts and visualizations
+- `Covid_Year.pdf` - pdf of the code and result
 
 ---
 
