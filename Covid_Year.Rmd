@@ -1,0 +1,180 @@
+---
+title: "State_by_year"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+date: "2025-02-12"
+---
+
+
+```{r, trend between the deaths}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readxl)
+library(latexpdf)
+library(tinytex)
+
+
+Covid_Year <- read_excel("C:/Users/Union Loaner #06/Desktop/Spring 2025/capstone 2/This semester project/New_State_Year_Dataset.xlsx")
+
+View(Covid_Year)
+Covid_Year <- Covid_Year %>%
+  mutate(Year = as.numeric(Year))
+
+# Select columns by index rather than by name
+df_long <- Covid_Year[, c("Year", "COVID-19-Deaths", "Pneumonia-Deaths", "Influenza-Deaths")] %>%
+  pivot_longer(cols = c("COVID-19-Deaths", "Pneumonia-Deaths", "Influenza-Deaths"), 
+               names_to = "cause_of_death", 
+               values_to = "deaths")
+
+# Create a smooth trend line graph to show trends of death types throughout the years
+ggplot(df_long, aes(x = Year, y = deaths, color = cause_of_death, group = cause_of_death)) +
+  geom_smooth(se = FALSE, method = "loess", linewidth = 1.5) +
+  labs(title = "Trend of Death Types Throughout the Years",
+       x = "Year",
+       y = "Number of Deaths",
+       color = "Cause of Death") +
+  theme_minimal()
+
+str(df_long)
+```
+```{r}
+library(ggplot2)
+library(GGally)
+
+# Select relevant columns for correlation analysis
+df_numeric <- Covid_Year[, c("COVID-19-Deaths", "Pneumonia-Deaths", "Influenza-Deaths")]
+
+# Create a graphical correlation matrix
+ggpairs(df_numeric, 
+        title = "Graphical Correlation Matrix of Death Types",
+        upper = list(continuous = wrap("cor", size = 3)),
+        lower = list(continuous = "smooth")) +
+  theme_minimal()
+```
+```{r, new row addition and posson}
+library(tidyr)
+library(dplyr)
+library(writexl)
+Extended_Covid_Year <- Covid_Year %>%
+  pivot_longer(cols = c(`COVID-19-Deaths`, `Pneumonia-Deaths`, `Influenza-Deaths`,`Pneumonia-and-COVID-19-Deaths`,`Pneumonia,-Influenza,-or-COVID-19-Deaths`),
+               names_to = "Disease",
+               values_to = "Response")
+
+
+head(Extended_Covid_Year)
+interaction.plot(Extended_Covid_Year$Year,Extended_Covid_Year$Disease,Extended_Covid_Year$Response)
+
+P_model <- glm(Response ~ as.factor(Year) * Disease, family = poisson, data = Extended_Covid_Year)
+summary(P_model)
+
+
+expected_counts <- predict(P_model, type = "response")
+
+
+head(expected_counts)
+
+
+
+```
+```{r, visuals on Deaths}
+library(ggplot2)
+ggplot(Extended_Covid_Year, aes(x = Disease, y = `Response`, fill = Disease)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Death Counts Per Year", 
+       x = "Death Type", 
+       y = "Death Count") +
+  scale_fill_brewer(palette = "Set3") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, Quasi-Poisson}
+model_qp <- glm(Response~Disease*as.factor(Year), family = quasipoisson,data = Extended_Covid_Year)
+summary(model_qp)
+```
+
+```{r negative binomial}
+library(MASS)
+model_nb_interact <- glm.nb(Response ~ Disease * as.factor(Year), data = Extended_Covid_Year)
+summary(model_nb_interact)
+```
+
+```{r}
+library(ggplot2)
+library(usmap)
+library(dplyr)
+
+# STEP 1: Organize your data
+panel_data_long <- Extended_Covid_Year %>%
+  group_by(State, Year, Disease) %>%
+  summarize(Deaths = sum(Response), .groups = "drop") %>%
+  mutate(State = toupper(State)) # Convert state names to uppercase
+
+# STEP 2: Visualize spatial patterns by year (Extremely Minimal Code)
+selected_disease_plot <- "COVID-19-Deaths" # Choose a disease to visualize
+
+map_data <- map_data("state") %>% rename(State = region) %>% mutate(State = toupper(State))
+
+years <- unique(panel_data_long$Year)
+
+for (yr in years) {
+  year_data <- panel_data_long %>%
+    filter(Year == yr, Disease == selected_disease_plot)
+
+  merged_data <- map_data %>%
+    left_join(year_data, by = "State")
+
+  print(
+    ggplot(merged_data, aes(long, lat, group = group, fill = Deaths)) +
+      geom_polygon(color = "black", linewidth = 0.1) +
+      coord_quickmap() +
+      scale_fill_viridis_c(option = "plasma", na.value = "lightgray") +
+      labs(title = paste(selected_disease_plot, "Deaths -", yr), fill = "Deaths") +
+      theme_void()
+  )
+}
+```
+
+```{r, from research paper}
+
+library(ggplot2)
+library(usmap)
+library(dplyr)
+
+# STEP 1: Organize your data
+panel_data_long <- Extended_Covid_Year %>%
+  filter(Disease %in% c("Pneumonia-Deaths", "Influenza-Deaths")) %>%
+  group_by(State, Year, Disease) %>%
+  summarize(Deaths = sum(Response), .groups = "drop") %>%
+  mutate(State = toupper(State)) # Convert state names to uppercase
+
+# STEP 2: Visualize spatial patterns by year for Pneumonia and Influenza
+map_data_states <- map_data("state") %>%
+  mutate(state_name_upper = toupper(region))
+
+years <- unique(panel_data_long$Year)
+diseases_to_plot <- unique(panel_data_long$Disease)
+
+for (dis in diseases_to_plot) {
+  for (yr in years) {
+    year_disease_data <- panel_data_long %>%
+      filter(Year == yr, Disease == dis)
+
+    merged_data <- map_data_states %>%
+      left_join(year_disease_data, by = c("state_name_upper" = "State"))
+
+    print(
+      ggplot(merged_data, aes(long, lat, group = group, fill = Deaths)) +
+        geom_polygon(color = "black", linewidth = 0.1) +
+        coord_quickmap() +
+        scale_fill_viridis_c(option = "plasma", na.value = "lightgray") +
+        labs(title = paste(dis, "Deaths -", yr), fill = "Deaths") +
+        theme_void()
+    )
+  }
+}
+
+```
