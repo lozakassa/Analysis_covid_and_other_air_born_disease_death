@@ -20,6 +20,7 @@ This project explores death rates due to **COVID-19**, **influenza**, and **pneu
 - **Negative Binomial modeling** modeling
 - **Correlation analysis**
 - Data sourced from the **CDC**
+- **Tableau** visual analysis
 
 ---
 
@@ -37,6 +38,7 @@ This project explores death rates due to **COVID-19**, **influenza**, and **pneu
 
 - `Covid_Year.Rmd` – Main analysis file
 - `Covid_Year.pdf` - pdf of the code and result
+- `Covid.twb` - Tableau visual analysis
 
 ---
 
